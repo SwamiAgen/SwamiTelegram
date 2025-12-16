@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Pro Sender</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+        body { font-family: 'Poppins', sans-serif; background: #f3f4f6; height: 100dvh; overflow: hidden; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .tab-btn.active { color: #2563eb; background-color: #eff6ff; border-bottom: 2px solid #2563eb; }
+    </style>
+</head>
+<body class="text-gray-800 bg-gray-100">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm fade-in text-center relative">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 text-2xl"><i class="fas fa-lock"></i></div>
+            <h2 class="text-2xl font-bold text-gray-800">Secure Access</h2>
+            <form onsubmit="handleLogin(event)">
+                <div class="relative mb-4 mt-6">
+                    <input type="password" id="passwordInput" placeholder="Enter Password" class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <i class="fas fa-key absolute left-3 top-3.5 text-gray-400"></i>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-lg">Login Dashboard</button>
+            </form>
+            <p id="loginError" class="text-red-500 text-xs mt-3 hidden">Password chukicha aahe!</p>
+            <button onclick="showForgotPassword()" class="text-xs text-blue-500 mt-6 underline cursor-pointer">Forgot Password?</button>
+        </div>
+    </div>
+
+    <!-- FORGOT PASSWORD MODAL -->
+    <div id="forgotModal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl fade-in relative min-h-[300px] flex flex-col justify-center">
+            <button onclick="closeForgotModal()" class="absolute top-3 right-3 text-gray-400"><i class="fas fa-times"></i></button>
+            
+            <!-- Step A: Send OTP -->
+            <div id="stepSendOtp">
+                <div class="text-center mb-6">
+                    <h3 class="text-lg font-bold text-gray-800">Reset Password</h3>
+                    <p class="text-xs text-gray-500 mt-1">OTP will be sent to:<br><span class="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">swamiagencies4connect@gmail.com</span></p>
+                </div>
+
+                <button onclick="sendOTP()" id="sendOtpBtn" class="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md flex justify-center items-center gap-2">
+                    <i class="fas fa-paper-plane"></i> Send OTP via Email
+                </button>
+                
+                <div id="emailErrorBox" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-left">
+                    <p class="text-[10px] text-red-600 font-bold mb-1"><i class="fas fa-exclamation-triangle"></i> Email Failed!</p>
+                    <div class="bg-white p-2 border border-red-100 rounded text-center">
+                        <p class="text-[10px] text-gray-400">Backup OTP:</p>
+                        <p id="backupOtpDisplay" class="text-lg font-bold text-red-600 tracking-widest">---</p>
+                    </div>
+                    <button onclick="useBackupOtp()" class="w-full mt-2 bg-red-600 text-white text-xs py-1 rounded">Use Backup OTP</button>
+                </div>
+            </div>
+
+            <!-- Step B: Verify OTP -->
+            <div id="stepVerifyOtp" class="hidden space-y-4">
+                <div class="text-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Verify & Change</h3>
+                    <div class="bg-green-50 text-green-700 p-1 rounded text-xs inline-block px-3 mt-1 border border-green-200"><i class="fas fa-check-circle"></i> OTP Sent!</div>
+                </div>
+
+                <div><label class="text-xs font-bold text-gray-600 block mb-1">Enter OTP</label><input type="number" id="otpInput" placeholder="000000" class="w-full p-2.5 border rounded-lg text-center tracking-[5px] text-lg font-bold outline-none focus:border-blue-500"></div>
+                <div><label class="text-xs font-bold text-gray-600 block mb-1">New Password</label><input type="text" id="newPassInput" placeholder="Set new password" class="w-full p-2.5 border rounded-lg outline-none focus:border-blue-500 text-sm"></div>
+                <button onclick="verifyAndReset()" class="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-green-700 shadow-md">Change Password</button>
+            </div>
+
+            <!-- Step C: SUCCESS MESSAGE (New) -->
+            <div id="stepSuccess" class="hidden text-center py-4 fade-in">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600 text-3xl shadow-sm">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Password Changed!</h3>
+                <p class="text-xs text-gray-500 mb-4">Tumcha password yashasvireetya badalla aahe.<br>Login screen var jat aahe...</p>
+                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-4 overflow-hidden">
+                    <div class="bg-green-500 h-1.5 rounded-full w-full animate-[width_2s_ease-out]"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="appScreen" class="hidden flex flex-col md:flex-row h-full w-full">
+        <!-- Sidebar -->
+        <div class="w-full md:w-72 bg-white border-r flex flex-col z-20 shadow-xl flex-shrink-0">
+            <div class="p-4 border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center">
+                <h1 class="text-lg font-bold"><i class="fab fa-telegram"></i> Pro Sender</h1>
+                <button onclick="logout()" class="text-white/80 hover:text-white"><i class="fas fa-power-off"></i></button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto space-y-6">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Config</label>
+                    <input type="password" id="botToken" placeholder="Bot Token" class="w-full p-2 border rounded text-xs bg-gray-50 outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Actions</label>
+                    <button onclick="scanForNewUsers()" id="scanBtn" class="w-full bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 py-2 rounded text-xs font-semibold"><i class="fas fa-sync-alt"></i> Scan</button>
+                    <button onclick="downloadExcel()" class="w-full bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 py-2 rounded text-xs font-semibold"><i class="fas fa-file-export"></i> Export Excel</button>
+                    <div class="relative"><input type="file" id="excelInput" accept=".xlsx" class="hidden" onchange="handleExcelUpload(this)"><label for="excelInput" class="w-full bg-green-50 text-green-600 border border-green-200 hover:bg-green-100 py-2 rounded text-xs font-semibold flex justify-center cursor-pointer"><i class="fas fa-file-import mr-1"></i> Import Excel</label></div>
+                </div>
+                <div class="mt-auto bg-slate-50 p-3 rounded border"><div class="grid grid-cols-2 text-center"><div class="border-r">Total<br><b id="statTotal" class="text-slate-700">0</b></div><div>New<br><b id="statNew" class="text-green-600">0</b></div></div></div>
+            </div>
+        </div>
+
+        <!-- Main Area -->
+        <div class="flex-1 flex flex-col bg-gray-50 h-full overflow-hidden">
+            <div class="bg-white border-b flex justify-between items-center px-4 h-12 shrink-0">
+                <div class="flex h-full gap-4">
+                    <button onclick="switchTab('all')" class="tab-btn active h-full text-xs font-bold px-2" id="tab-all">All</button>
+                    <button onclick="switchTab('new')" class="tab-btn h-full text-xs font-bold px-2" id="tab-new">New <span id="newBadge" class="hidden w-2 h-2 bg-red-500 rounded-full ml-1"></span></button>
+                    <button onclick="switchTab('excel')" class="tab-btn h-full text-xs font-bold px-2" id="tab-excel">Excel</button>
+                </div>
+                <button onclick="toggleFullScreen()" class="text-xs text-gray-500"><i class="fas fa-expand"></i> Fullscreen</button>
+            </div>
+            <div class="bg-white/50 border-b px-4 py-2 flex justify-between items-center text-xs shrink-0">
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="selectAllBox" onchange="toggleSelectAll()" class="rounded text-blue-600 w-4 h-4"><span class="font-medium">Select All</span></label>
+                <div class="text-gray-500">Selected: <b id="selectedCount" class="text-blue-600">0</b></div>
+            </div>
+            <div id="listContainer" class="flex-1 overflow-y-auto p-4 space-y-2"></div>
+            <div class="bg-white p-3 border-t shrink-0">
+                <div class="flex gap-2 max-w-5xl mx-auto">
+                    <textarea id="messageBox" rows="1" placeholder="Type message..." class="flex-1 p-2 border rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm h-10 resize-none"></textarea>
+                    <button onclick="sendMessage()" id="sendBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded font-bold shadow h-10">SEND</button>
+                </div>
+                <div id="progressArea" class="hidden mt-2 max-w-5xl mx-auto"><div class="w-full bg-gray-100 rounded-full h-1"><div id="progressBar" class="bg-blue-600 h-full rounded-full w-0"></div></div></div>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="hidden fixed top-6 right-6 bg-slate-800 text-white px-4 py-3 rounded shadow-xl z-[100] text-xs">Notification</div>
+
+    <script>
+        // === CONFIG ===
+        const OWNER_EMAIL = "swamiagencies4connect@gmail.com";
+        const DEFAULT_PASS = "admin123";
+        const EMAILJS_PUBLIC_KEY = "UR6W1xrNse4kkwCOe"; 
+        const EMAILJS_SERVICE_ID = "service_2fu55nc"; 
+        const EMAILJS_TEMPLATE_ID = "template_298l467"; 
+
+        // Init
+        (function(){ try { emailjs.init(EMAILJS_PUBLIC_KEY); } catch(e){ console.error(e); } })();
+
+        let currentOTP = null;
+        let db = { all: [], new: [], excel: [] };
+        let currentTab = 'all';
+
+        window.onload = () => { if(sessionStorage.getItem('tg_app_logged_in')==='true') showApp(); };
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('passwordInput').value;
+            const stored = localStorage.getItem('tg_app_password') || DEFAULT_PASS;
+            if(input === stored) { sessionStorage.setItem('tg_app_logged_in', 'true'); showApp(); } 
+            else { document.getElementById('loginError').classList.remove('hidden'); }
+        }
+        function showApp() { document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('appScreen').classList.remove('hidden'); loadData(); }
+        function logout() { sessionStorage.removeItem('tg_app_logged_in'); location.reload(); }
+
+        function showForgotPassword() { 
+            document.getElementById('forgotModal').classList.remove('hidden'); 
+            document.getElementById('stepSendOtp').classList.remove('hidden'); 
+            document.getElementById('stepVerifyOtp').classList.add('hidden'); 
+            document.getElementById('stepSuccess').classList.add('hidden'); // Ensure success is hidden
+            document.getElementById('emailErrorBox').classList.add('hidden');
+        }
+        function closeForgotModal() { document.getElementById('forgotModal').classList.add('hidden'); }
+
+        function sendOTP() {
+            const btn = document.getElementById('sendOtpBtn');
+            const errBox = document.getElementById('emailErrorBox');
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Sending...`; btn.disabled = true;
+            errBox.classList.add('hidden');
+
+            currentOTP = Math.floor(100000 + Math.random() * 900000);
+            const params = { to_email: OWNER_EMAIL, otp: currentOTP, message: currentOTP };
+
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, params)
+                .then(() => { alert("Email Sent! Check Inbox."); showVerifyStep(); })
+                .catch((err) => {
+                    console.error("EmailJS Failed:", err);
+                    document.getElementById('backupOtpDisplay').textContent = currentOTP;
+                    errBox.classList.remove('hidden');
+                })
+                .finally(() => { btn.innerHTML = `<i class="fas fa-paper-plane"></i> Send OTP via Email`; btn.disabled = false; });
+        }
+
+        function useBackupOtp() { document.getElementById('otpInput').value = currentOTP; showVerifyStep(); }
+        function showVerifyStep() { document.getElementById('stepSendOtp').classList.add('hidden'); document.getElementById('stepVerifyOtp').classList.remove('hidden'); }
+
+        function verifyAndReset() {
+            const uOtp = document.getElementById('otpInput').value;
+            const pass = document.getElementById('newPassInput').value;
+            if(uOtp == currentOTP) {
+                if(pass.length < 3) return alert("Password too short");
+                
+                // Save Password
+                localStorage.setItem('tg_app_password', pass);
+                
+                // Show Success Screen
+                document.getElementById('stepVerifyOtp').classList.add('hidden');
+                document.getElementById('stepSuccess').classList.remove('hidden');
+                
+                // Wait and Reload
+                setTimeout(() => { location.reload(); }, 2000);
+            } else alert("Invalid OTP");
+        }
+
+        // --- CORE LOGIC ---
+        function loadData() {
+            if(localStorage.getItem('tg_bot_token')) document.getElementById('botToken').value = localStorage.getItem('tg_bot_token');
+            if(localStorage.getItem('tg_all_users')) db.all = JSON.parse(localStorage.getItem('tg_all_users'));
+            updateStats(); renderList();
+        }
+        document.getElementById('botToken').addEventListener('input', (e) => localStorage.setItem('tg_bot_token', e.target.value.trim()));
+        function toggleFullScreen() { if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e=>console.log(e)); else if(document.exitFullscreen) document.exitFullscreen(); }
+        
+        function switchTab(t) { currentTab=t; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById(`tab-${t}`).classList.add('active'); if(t==='new') document.getElementById('newBadge').classList.add('hidden'); document.getElementById('selectAllBox').checked=false; renderList(); }
+        
+        function renderList() {
+            const c = document.getElementById('listContainer'); const d = db[currentTab];
+            c.innerHTML = '';
+            if(d.length===0) return c.innerHTML = `<div class="text-center text-gray-400 mt-10 text-xs">No Data</div>`;
+            const frag = document.createDocumentFragment();
+            d.forEach(u => {
+                const el = document.createElement('div');
+                el.className = 'bg-white p-2 rounded border mb-2 flex items-center gap-2 cursor-pointer';
+                el.onclick = (e) => { if(e.target.type!=='checkbox') { const ch = el.querySelector('input'); ch.checked=!ch.checked; updateCnt(); }};
+                el.innerHTML = `<input type="checkbox" value="${u.id}" class="uchk" onchange="updateCnt()"> <div class="w-8 h-8 rounded bg-blue-100 flex items-center justify-center text-[10px] font-bold">${(u.name||'U').charAt(0)}</div> <div class="flex-1 overflow-hidden"><div class="truncate text-sm font-bold">${u.name||'Unknown'}</div><div class="text-[10px] text-gray-500">${u.id}</div></div>`;
+                frag.appendChild(el);
+            });
+            c.appendChild(frag); updateCnt();
+        }
+        function toggleSelectAll() { const m = document.getElementById('selectAllBox'); document.querySelectorAll('.uchk').forEach(k => k.checked=m.checked); updateCnt(); }
+        function updateCnt() { document.getElementById('selectedCount').textContent = document.querySelectorAll('.uchk:checked').length; }
+        function updateStats() { document.getElementById('statTotal').textContent=db.all.length; document.getElementById('statNew').textContent=db.new.length; }
+
+        async function scanForNewUsers() {
+            const tok = document.getElementById('botToken').value.trim();
+            if(!tok) return alert("Bot Token Required");
+            const btn = document.getElementById('scanBtn'); btn.innerHTML='Scanning...'; btn.disabled=true;
+            try {
+                const r = await fetch(`https://api.telegram.org/bot${tok}/getUpdates`); const res = await r.json();
+                if(!res.ok) throw new Error(res.description);
+                let found=false; const ex = new Set(db.all.map(u=>u.id));
+                res.result.forEach(x => {
+                    if(x.message && x.message.from) {
+                        const u = x.message.from;
+                        if(!ex.has(u.id)) {
+                            const nu = { id: u.id, name: `${u.first_name} ${u.last_name||''}`.trim(), username: u.username };
+                            if(!db.new.some(n=>n.id===u.id)) { db.new.push(nu); db.all.push(nu); ex.add(u.id); found=true; }
+                        }
+                    }
+                });
+                if(found) { document.getElementById('newBadge').classList.remove('hidden'); localStorage.setItem('tg_all_users', JSON.stringify(db.all)); updateStats(); if(currentTab==='new'||currentTab==='all') renderList(); alert(`${db.new.length} New Users!`); } else alert("No new users.");
+            } catch(e) { alert(e.message); } finally { btn.innerHTML='<i class="fas fa-sync-alt"></i> Scan'; btn.disabled=false; }
+        }
+
+        function downloadExcel() {
+            if(!db.all.length) return alert("No data");
+            const ws = XLSX.utils.json_to_sheet(db.all.map(u=>({ID:u.id, Name:u.name, User:u.username})));
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Users");
+            XLSX.writeFile(wb, "users.xlsx");
+        }
+
+        function handleExcelUpload(inp) {
+            const f = inp.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = (e) => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+                const d = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+                db.excel = [];
+                for(let i=1; i<d.length; i++) if(d[i][0]) db.excel.push({id:d[i][0], name:d[i][1]||'Excel'});
+                if(db.excel.length) { switchTab('excel'); alert("Loaded!"); }
+                inp.value='';
+            }; r.readAsArrayBuffer(f);
+        }
+
+        async function sendMessage() {
+            const tok = document.getElementById('botToken').value.trim();
+            const msg = document.getElementById('messageBox').value.trim();
+            const ids = Array.from(document.querySelectorAll('.uchk:checked')).map(c=>c.value);
+            if(!tok||!msg||!ids.length) return alert("Check inputs");
+            const btn = document.getElementById('sendBtn'); const bar = document.getElementById('progressBar');
+            btn.disabled=true; document.getElementById('progressArea').classList.remove('hidden');
+            for(let i=0; i<ids.length; i++) {
+                bar.style.width = `${Math.round(((i+1)/ids.length)*100)}%`;
+                try { await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({chat_id:ids[i], text:msg, parse_mode:'HTML'})}); } catch(e){}
+                await new Promise(r=>setTimeout(r,50));
+            }
+            alert("Sent!"); btn.disabled=false; document.getElementById('progressArea').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
+
+
